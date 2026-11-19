@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>火柴人影子战士</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3590">
+<link rel="manifest" href="manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#040406;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:sans-serif;overflow:hidden;color:#eee}
+.tv-frame{position:relative;background:linear-gradient(145deg,#242428,#0e0e10);border-radius:18px;padding:14px 18px 24px;box-shadow:0 0 0 3px #2a2a30,0 24px 70px rgba(0,0,0,.95)}
+.tv-screen{position:relative;background:#000;border-radius:3px;overflow:hidden}
+canvas{display:block;background:#0a0a12}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.94);z-index:10;text-align:center}
+.overlay h1{font-size:28px;color:#e0e0ff;text-shadow:0 0 20px #3a6fff;margin-bottom:8px}
+.start-btn{margin-top:16px;padding:12px 36px;font-size:16px;background:linear-gradient(180deg,#3a5fd0,#1a3590);border:none;border-radius:8px;color:#fff;cursor:pointer}
+.hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;z-index:5;font-size:12px;pointer-events:none}
+.health-bar{width:160px;height:12px;background:#222;border:2px solid #555;border-radius:3px;overflow:hidden}
+.health-fill{height:100%;background:linear-gradient(90deg,#c22,#e44);width:100%}
+</style>
+</head>
+<body>
+<div class="tv-frame"><div class="tv-screen">
+<canvas id="game" width="960" height="540"></canvas>
+<div class="hud" id="hud" style="display:none">
+<div><div class="health-bar"><div class="health-fill" id="playerHp"></div></div></div>
+<div id="scoreDisplay">得分: 0</div>
+<div id="waveDisplay">1</div>
+</div>
+<div class="overlay" id="startScreen">
+<h1>火柴人影子战士</h1>
+<p>电视应用版</p>
+<button class="start-btn" id="startBtn" autofocus>按确认键开始</button>
+<p style="margin-top:12px;color:#888;font-size:12px">←→移动 · ↑跳跃 · OK攻击 · ↓重击</p>
+</div>
+<div class="overlay" id="gameOverScreen" style="display:none">
+<h1 style="color:#f66">游戏结束</h1>
+<p id="finalScore">得分: 0</p>
+<button class="start-btn" id="restartBtn">再来一次</button>
+</div>
+</div></div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const W=960,H=540,groundY=H-50;
+let gameState='start',score=0,wave=1,frame=0,keys={};
+const player={x:200,y:groundY-58,vx:0,vy:0,hp:100,maxHp:100,facing:1,attackTimer:0,attackType:0,invincible:0,grounded:false,anim:0,cooldown:0};
+let enemies=[];
+function spawn(){for(let i=0;i<2+Math.min(wave,6);i++)setTimeout(()=>{if(gameState!=='playing')return;enemies.push({x:W+40+i*40,y:groundY-55,vx:0,hp:30+wave*5,maxHp:30+wave*5,speed:1.2+Math.random()*0.5,facing:-1,anim:0,cd:20});},i*400);}
+window.addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Space'].includes(e.code))e.preventDefault();
+if((e.code==='Enter'||e.code==='NumpadEnter')&&gameState==='start')start();if((e.code==='Enter'||e.code==='NumpadEnter')&&gameState==='over')restart();});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+function start(){document.getElementById('startScreen').style.display='none';document.getElementById('hud').style.display='flex';score=0;wave=1;player.hp=100;player.x=200;enemies=[];gameState='playing';spawn();requestAnimationFrame(loop);}
+function restart(){document.getElementById('gameOverScreen').style.display='none';start();}
+document.getElementById('startBtn').onclick=start;document.getElementById('restartBtn').onclick=restart;
+function loop(){if(gameState!=='playing')return;frame++;
+let m=0;if(keys.ArrowLeft||keys.KeyA)m=-1;if(keys.ArrowRight||keys.KeyD)m=1;player.vx=m*5;if(m)player.facing=m;
+if((keys.ArrowUp||keys.Space||keys.KeyW)&&player.grounded){player.vy=-14;player.grounded=false;}
+if(player.cooldown<=0&&(keys.Enter||keys.KeyZ)){player.attackType=1;player.attackTimer=10;player.cooldown=14;}
+if(player.cooldown<=0&&keys.ArrowDown){player.attackType=2;player.attackTimer=14;player.cooldown=22;}
+player.vy+=0.6;player.x+=player.vx;player.y+=player.vy;
+if(player.y+58>=groundY){player.y=groundY-58;player.vy=0;player.grounded=true;}if(player.x<10)player.x=10;if(player.x>W-30)player.x=W-30;
+if(player.cooldown>0)player.cooldown--;if(player.attackTimer>0)player.attackTimer--;else player.attackType=0;if(player.invincible>0)player.invincible--;player.anim+=Math.abs(player.vx)*0.1+0.03;
+for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.anim+=0.1;const dx=player.x-e.x;if(Math.abs(dx)>40){e.vx=Math.sign(dx)*e.speed;e.facing=Math.sign(dx);}else{e.vx=0;if(e.cd<=0){e.cd=40;if(player.invincible<=0){player.hp-=10;player.invincible=20;if(player.hp<=0){player.hp=0;end();}}}}
+e.x+=e.vx;if(e.cd>0)e.cd--;
+if(player.attackType&&player.attackTimer>3){const r=player.attackType===2?70:50;const dmg=player.attackType===2?28:14;if(Math.abs(e.x-player.x)<r&&((player.facing>0&&e.x>player.x)||(player.facing<0&&e.x<player.x))){e.hp-=dmg;e.vx=player.facing*6;if(player.attackType===1)player.attackType=0;}}
+if(e.hp<=0){score+=15;enemies.splice(i,1);}}
+if(enemies.length===0){wave++;spawn();}
+ctx.fillStyle='#0a0a14';ctx.fillRect(0,0,W,H);ctx.fillStyle='#14101c';ctx.fillRect(0,groundY,W,H-groundY);
+function stick(x,y,facing,color,anim,atk){ctx.save();ctx.translate(x+10,y);ctx.scale(facing,1);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.lineCap='round';
+ctx.beginPath();ctx.arc(0,8,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(0,17);ctx.lineTo(0,42);ctx.stroke();
+const leg=Math.sin(anim)*8;ctx.beginPath();ctx.moveTo(0,42);ctx.lineTo(-8+leg*0.3,58);ctx.moveTo(0,42);ctx.lineTo(8-leg*0.3,58);ctx.stroke();
+if(atk){ctx.beginPath();ctx.moveTo(0,24);ctx.lineTo(28,14);ctx.stroke();ctx.strokeStyle='#cdf';ctx.beginPath();ctx.moveTo(28,14);ctx.lineTo(48,2);ctx.stroke();}else{ctx.beginPath();ctx.moveTo(0,24);ctx.lineTo(-10,36);ctx.moveTo(0,24);ctx.lineTo(10,36);ctx.stroke();}ctx.restore();}
+for(const e of enemies){if(e.hp<e.maxHp){ctx.fillStyle='#333';ctx.fillRect(e.x,e.y-12,30,4);ctx.fillStyle='#e66';ctx.fillRect(e.x,e.y-12,30*(e.hp/e.maxHp),4);}stick(e.x,e.y,e.facing,'#aaa',e.anim,0);}
+if(player.invincible<=0||frame%6<3)stick(player.x,player.y,player.facing,'#e2eaff',player.anim,player.attackTimer);
+document.getElementById('playerHp').style.width=(player.hp/player.maxHp*100)+'%';document.getElementById('scoreDisplay').textContent='得分: '+score;document.getElementById('waveDisplay').textContent=wave;
+requestAnimationFrame(loop);}
+function end(){gameState='over';document.getElementById('hud').style.display='none';document.getElementById('finalScore').textContent='得分: '+score+' · 波次: '+wave;document.getElementById('gameOverScreen').style.display='flex';}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+</html>
