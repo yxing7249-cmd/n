@@ -1,19 +1,16 @@
 {
   "name": "stickman-shadow-warrior",
   "version": "1.0.0",
-  "description": "火柴人影子战士 - 可安装应用（PWA / Android）",
+  "description": "火柴人影子战士 - Android 应用",
   "main": "www/index.html",
   "scripts": {
     "start": "npx --yes serve www -p 3000",
-    "dev": "npx --yes serve www -p 3000",
-    "build:android": "npx cap sync android",
-    "open:android": "npx cap open android"
+    "build:android": "npx cap sync android"
   },
-  "keywords": ["game", "stickman", "pwa", "android", "tv"],
   "license": "MIT",
   "dependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/cli": "^6.0.0"
+    "@capacitor/android": "6.2.0",
+    "@capacitor/core": "6.2.0",
+    "@capacitor/cli": "6.2.0"
   }
 }

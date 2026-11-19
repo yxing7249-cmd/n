@@ -2,9 +2,6 @@
   "appId": "com.shadowwarrior.stickman",
   "appName": "火柴人影子战士",
   "webDir": "www",
-  "server": {
-    "androidScheme": "https"
-  },
   "android": {
     "allowMixedContent": true,
     "backgroundColor": "#0a0a12"
